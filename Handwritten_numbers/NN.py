@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt # for data visualization purposes
 import seaborn as sns # for data visualization
 import time
 from sklearn.cluster import KMeans
+from scipy.spatial import distance
+import datetime
 
 (training_data, training_labels), (test_data, test_labels) = mnist.load_data()
 
@@ -29,21 +31,13 @@ trainingSetSize = len(training_data)
 # Seperate data into each class
 
 def split_data(training_data, training_labels):
-    classList = np.empty_like(training_data)
+    sorted_labels = np.argsort(training_labels)
+    sorted_data = np.empty_like(training_data)
 
-    # Making classList into a nested list (eash element is a list containing one class, element index [0-9] = class)
-    """ for i in range(numClasses):
-        #single_class = []
-        #classList.append(single_class)
-        classList[i] = training_data[training_labels[i]] """
+    for i in range(len(training_labels)):
+        sorted_data[i] = training_data[sorted_labels[i]]
 
-    # Sorting data into each class in classList
-    """ for i in range(trainingSetSize):
-        classList[training_labels[i]].append(training_data[i]) """
-    for i in range(numClasses):
-        classList[i] = training_data[training_labels[i]]
-    
-    return classList
+    return sorted_data 
 
 
 # Counting samples in each class
@@ -54,6 +48,12 @@ def count_samples(classList):
 
     return sample_count
 
+
+""" plt.subplot(2,1,1)
+plt.imshow(class_list[0])
+plt.subplot(2,1,2)
+plt.imshow(class_list[57000])
+plt.show() """
 
 #---------------------------------------------------------
 #   **************************************************
@@ -87,8 +87,69 @@ def cluster_data(num_clusters, training_data, training_labels):
 
 clusterMatrix = cluster_data(64, training_data, training_labels)
 
-print('Cluster matrix size :')
-print(clusterMatrix.size)
 
-# POTENTIAL PROBLEM: Only finds 8 clusters in each class
 
+
+#---------------------------------------------------------
+#   **************************************************
+#   |                                                |
+#   |                       NN                       |
+#   |                                                |
+#   **************************************************
+#---------------------------------------------------------
+
+class NN():
+    def __init__(self, K=5):
+        self.K = K
+    def fit(self, training_data, training_labels):
+        self.training_data = training_data
+        self.training_labels = training_labels
+
+# First NN without clustering
+def NN_classifier(self, test_data):
+    classifications = []
+    successful_classifications = []
+    failed_classifications = []
+
+    for i in range(len(test_data)):
+        eucledian_distance = []
+
+        for j in range(len(self.training_data)):
+            eucledian_distance.append(distance.euclidean(test_data[i], self.training_data[j]))
+        
+        NN_index = np.argmin(eucledian_distance)
+
+        if test_labels[i] != training_labels[NN_index]:
+            failed_classifications.append([test_data[i], training_data[NN_index]])
+        else:
+            successful_classifications.append([test_data[i], training_data[NN_index]])
+
+        classifications.append(self.training_labels[NN_index])
+
+    return classifications, successful_classifications, failed_classifications
+
+
+
+#---------------------------------------------------------
+#   **************************************************
+#   |                                                |
+#   |              CONFUSION MATRIX                  |
+#   |                                                |
+#   **************************************************
+#---------------------------------------------------------
+
+def get_confusion_matrix(classifications):
+    confusion_matrix = np.zeros((numClasses, numClasses))
+
+    for i, x in enumerate(classifications):
+        confusion_matrix[test_labels[i], x] += 1
+    
+    return confusion_matrix
+
+def get_normalised_confusion_matrix(classifications):
+    confusion_matrix = np.zeros((numClasses, numClasses))
+
+    for i, x in enumerate(classifications):
+        confusion_matrix[test_labels[i], x] += 1
+
+    return confusion_matrix / np.amax(confusion_matrix)
