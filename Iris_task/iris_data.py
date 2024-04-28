@@ -1,5 +1,5 @@
 from sklearn import metrics
-from sklearn.metrics import mean_squared_error, accuracy_score
+from sklearn.metrics import mean_squared_error, accuracy_score, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.linear_model import Perceptron, LinearRegression, Ridge, LogisticRegression
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import LabelEncoder
@@ -9,15 +9,26 @@ import numpy as np
 import seaborn as sns
 import pandas as pd
 
-########################
-##     FIRST PART     ##
-########################
+###############################################################
+##                                                           ##
+##     READING DATA & PREPARING FOR TRAINING AND TESTING     ##
+##                                                           ##
+###############################################################
+
+classes = ['setosa', 'versicolor', 'virginica']
+features = ['sepal length', 'sepal width', 'petal length', 'petal width']
+
+Classes = len(classes)              #3
+Feature = len(features)             #4
+alpha = 0.01                        #Step factor
+N = 1000                            #Number of iterations
+W = np.zeros([Classes, 2])    #Matrix of classes and features #TODO:
 
 def read_data():
     """Read data and seperate into dataset without species, x, and with only species, t"""
     global iris, x, t
     iris = pd.read_csv('iris.csv')
-    iris = iris.drop(columns=['Id'])
+    iris = iris.drop(columns=['Id', 'SepalWidthCm', 'PetalWidthCm'])
     #iris_describe = iris.describe()
     #iris_info = iris.info()
     #iris_species = iris.iloc[:,-1:].value_counts()
@@ -27,237 +38,165 @@ def read_data():
     x = iris.drop('Species', axis=1)
     t = iris.Species
 
-def iris_plots_hist():
-    fig, axes = plt.subplots(nrows=2, ncols=2, sharey=True)
-
-    species = ['Sepal Length [cm]', 'Sepal Width [cm]', 'Petal Length [cm]', 'Petal Width [cm]']
-    colors = ['indigo', 'sienna', 'pink', 'darkgreen']
-    xlim_values = [(0.9, 8), (0, 4.5), (0.9, 8), (0, 4.5)]
-
-    for ax, column, xlim, color, title in zip(axes.flat, iris.columns, xlim_values, colors, species):
-        iris[column].plot.hist(ax=ax, xlim=xlim, title=title, color=color, alpha=0.8)
-        ax.set(xlabel='[cm]', ylabel='Number')
-        ax.grid()
-
-    plt.tight_layout()
-    plt.show()
-
-def iris_scatter():
-    colors = ['plum', 'darkgreen', 'indigo']
-    species = ['Iris-virginica', 'Iris-versicolor', 'Iris-setosa']
-
-    fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
-
-    for i in range(3):
-        x = iris[iris['Species'] == species[i]]
-        axs[0, 0].scatter(x['SepalLengthCm'], x['SepalWidthCm'], c=colors[i], label=species[i])
-        axs[0, 1].scatter(x['PetalLengthCm'], x['PetalWidthCm'], c=colors[i], label=species[i])
-        axs[1, 0].scatter(x['SepalLengthCm'], x['PetalLengthCm'], c=colors[i], label=species[i])
-        axs[1, 1].scatter(x['SepalWidthCm'], x['PetalWidthCm'], c=colors[i], label=species[i])
-
-    axs[0, 0].set_title('Sepal Length vs Sepal Width')
-    axs[0, 1].set_title('Petal Length vs Petal Width')
-    axs[1, 0].set_title('Sepal Length vs Petal Length')
-    axs[1, 1].set_title('Sepal Width vs Petal Width')
-
-    for ax in axs.flat:
-        ax.set(xlabel='Length (cm)', ylabel='Width (cm)')
-        ax.legend()
-        ax.grid()
-
-    plt.tight_layout()
-    plt.show()
-
 def iris_training():
     """Training set with 30 first samples for both x and t.
        Training set with 30 last samples for both x and t."""
     #30 first samples for training
     global iris_x_training_first, iris_t_training_first, iris_x_training_last, iris_t_training_last
+    zeros_columns = np.zeros([90,2])
     iris_x_setosa_training_first, iris_t_setosa_training_first = x[:30], t[:30]
     iris_x_versicolor_training_first, iris_t_versicolor_training_first = x[50:80], t[50:80]
     iris_x_virginica_training_first, iris_t_virginica_training_first = x[100:130], t[100:130]
-    iris_x_training_first = pd.concat([iris_x_setosa_training_first, iris_x_versicolor_training_first, iris_x_virginica_training_first])
-    iris_t_training_first = pd.concat([iris_t_setosa_training_first, iris_t_versicolor_training_first, iris_t_virginica_training_first])
+    iris_x_training_first = np.concatenate([iris_x_setosa_training_first, iris_x_versicolor_training_first, iris_x_virginica_training_first])
+    iris_t_training_first = np.concatenate([iris_t_setosa_training_first, iris_t_versicolor_training_first, iris_t_virginica_training_first])
+    iris_t_training_first = np.concatenate([iris_t_training_first[:, np.newaxis], zeros_columns], axis=1)
 
     #30 last samples for training
     iris_x_setosa_training_last, iris_t_setosa_training_last = x[20:50], t[20:50]
     iris_x_versicolor_training_last, iris_t_versicolor_training_last = x[70:100], t[70:100]
     iris_x_virginica_training_last, iris_t_virginica_training_last = x[-30:], t[-30:]
-    iris_x_training_last = pd.concat([iris_x_setosa_training_last, iris_x_versicolor_training_last, iris_x_virginica_training_last])
-    iris_t_training_last = pd.concat([iris_t_setosa_training_last, iris_t_versicolor_training_last, iris_t_virginica_training_last])
+    iris_x_training_last = np.concatenate([iris_x_setosa_training_last, iris_x_versicolor_training_last, iris_x_virginica_training_last])
+    iris_t_training_last = np.concatenate([iris_t_setosa_training_last, iris_t_versicolor_training_last, iris_t_virginica_training_last])
+    iris_t_training_last = np.concatenate([iris_t_training_last[:, np.newaxis], zeros_columns], axis=1)
+
+    return iris_x_training_first, iris_t_training_first, iris_x_training_last, iris_t_training_last
 
 def iris_test():
     """Test set with 20 last  samples for both x and t.
        Test set with 20 first samples for both x and t."""
     #20 last samples for testing
     global iris_x_testing_last, iris_t_testing_last, iris_x_testing_first, iris_t_testing_first
+    zeros_columns = np.zeros([60,2])
     iris_x_setosa_testing_last, iris_t_setosa_testing_last = x[30:50], t[30:50]
     iris_x_versicolor_testing_last, iris_t_versicolor_testing_last = x[80:100], t[80:100]
     iris_x_virginica_testing_last, iris_t_virginica_testing_last = x[-20:], t[-20:]
-    iris_x_testing_last = pd.concat([iris_x_setosa_testing_last, iris_x_versicolor_testing_last, iris_x_virginica_testing_last])
-    iris_t_testing_last = pd.concat([iris_t_setosa_testing_last, iris_t_versicolor_testing_last, iris_t_virginica_testing_last])
+    iris_x_testing_last = np.concatenate([iris_x_setosa_testing_last, iris_x_versicolor_testing_last, iris_x_virginica_testing_last])
+    iris_t_testing_last = np.concatenate([iris_t_setosa_testing_last, iris_t_versicolor_testing_last, iris_t_virginica_testing_last])
+    iris_t_testing_last = np.concatenate([iris_t_testing_last[:, np.newaxis], zeros_columns], axis=1)
 
     #20 first samples for testing
     iris_x_setosa_testing_first, iris_t_setosa_testing_first = x[30:50], t[30:50]
     iris_x_versicolor_testing_first, iris_t_versicolor_testing_first = x[80:100], t[80:100]
     iris_x_virginica_testing_first, iris_t_virginica_testing_first = x[-20:], t[-20:]
-    iris_x_testing_first = pd.concat([iris_x_setosa_testing_first, iris_x_versicolor_testing_first, iris_x_virginica_testing_first])
-    iris_t_testing_first = pd.concat([iris_t_setosa_testing_first, iris_t_versicolor_testing_first, iris_t_virginica_testing_first])
+    iris_x_testing_first = np.concatenate([iris_x_setosa_testing_first, iris_x_versicolor_testing_first, iris_x_virginica_testing_first])
+    iris_t_testing_first = np.concatenate([iris_t_setosa_testing_first, iris_t_versicolor_testing_first, iris_t_virginica_testing_first])
+    iris_t_testing_first = np.concatenate([iris_t_testing_first[:, np.newaxis], zeros_columns], axis=1)
 
-def sigmoid_this(y):
-    """Eq:20"""
-    return np.array(1 / (1 + np.exp(-y)))
-
-#TODO: Train a linear classifier as described in subchapter 2.4 and 3.2. Tune the step factor alpha in equation 19 until the training converge.
-def mse_1():
-    print("Mean Squared Error for training- and test set one.")
-    """Chapter 3.2 -  MSE based training of a linear classifier, three ways."""
-    perceptron = Perceptron(max_iter=1000, random_state=42)         #Perceptron classifier with 1000 iterations and 42 as random seed
-    perceptron.fit(iris_x_training_first, iris_t_training_first)    #Training the classifier
-    t_pred = perceptron.predict(iris_x_testing_last)                #Predicting labels for the test set
-    mse = mean_squared_error(iris_t_testing_last, t_pred)           #Calculating Mean Squared Error between test (true values) and predictet labels
-    print("Mean Squared Error:", mse)
-
-    ####RIDGE###
-    param_grid = {'alpha': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}    #Define a grid of hyperparameters to search
-    modelll = Ridge()                                               #Initialize Ridge regression model
-    grid_search = GridSearchCV(modelll, param_grid, cv=5, scoring='neg_mean_squared_error') #Perform grid search
-    grid_search.fit(iris_x_training_first, iris_t_training_first)
-    best_alpha = grid_search.best_params_['alpha']                  #Get the best parameter
-    print("Best alpha from Ridge:", best_alpha)
-
-    ####LINEAR REGRESSION###
-    model = LinearRegression()                                      #Training a linear regression model
-    model.fit(iris_x_training_first, iris_t_training_first)
-    predictions = model.predict(iris_x_testing_last)                #Make predictions on the test set
-    mse = mean_squared_error(iris_t_testing_last, predictions)      #Calculate Mean Squared Error
-    print("Mean Squared Error using Linear Regression:", mse)
-
-    ####SVM####
-    param_grid = {'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}        #Define a grid of hyperparameters to search
-    modell = SVR(kernel='linear')                                   #Train an SVM model with SVR
-    grid_search = GridSearchCV(modell, param_grid, cv=5, scoring='neg_mean_squared_error') #Perform grid search
-    grid_search.fit(iris_x_training_first, iris_t_training_first)
-    best_alpha = grid_search.best_params_['C']                      #Get the best parameter
-    print("Best alpha from SVM:", best_alpha)
-
-    modell.fit(iris_x_training_first, iris_t_training_first)
-    predictions = modell.predict(iris_x_testing_last)               #Make predictions on the test set
-    mse = mean_squared_error(iris_t_testing_last, predictions)      #Calculate Mean Squared Error
-    print("Mean Squared Error using SVM:", mse)
-
-    ####ACCURACY####
-    model = LogisticRegression(max_iter=10000, random_state=42)     #Initialize and train the logistic regression model
-    model.fit(iris_x_training_first, iris_t_training_first)         #Predict on the testing set
-    predictions = model.predict(iris_x_testing_last)                #Evaluate accuracy
-    accuracy = accuracy_score(iris_t_testing_last, predictions)
-    print(f"Accuracy on testing set one is: {accuracy}")
-
-
-def mse_2():
-    print("Mean Squared Error for training- and test set two.")
-    perceptron = Perceptron(max_iter=1000, random_state=42)         #Perceptron classifier with 1000 iterations and 42 as random seed
-    perceptron.fit(iris_x_training_last, iris_t_training_last)      #Training the classifier
-    t_pred = perceptron.predict(iris_x_testing_first)               #Predicting labels for the test set
-    mse = mean_squared_error(iris_t_testing_first, t_pred)          #Calculating Mean Squared Error between test (true values) and predictet labels
-    print("Mean Squared Error:", mse)
-
-    ####RIDGE###
-    param_grid = {'alpha': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}    #Define a grid of hyperparameters to search
-    modelll = Ridge()                                               #Initialize Ridge regression model
-    grid_search = GridSearchCV(modelll, param_grid, cv=5, scoring='neg_mean_squared_error') #Perform grid search
-    grid_search.fit(iris_x_training_last, iris_t_training_last)
-    best_alpha = grid_search.best_params_['alpha']                  #Get the best parameter
-    print("Best alpha from Ridge:", best_alpha)
-
-    ####LINEAR REGRESSION###
-    model = LinearRegression()                                      #Training a linear regression model
-    model.fit(iris_x_training_last, iris_t_training_last)
-    predictions = model.predict(iris_x_testing_first)               #Make predictions on the test set
-    mse = mean_squared_error(iris_t_testing_first, predictions)     #Calculate Mean Squared Error
-    print("Mean Squared Error from Linear Regression is:", mse)
-
-    ####SVM####
-    param_grid = {'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}        #Define a grid of hyperparameters to search
-    modell = SVR(kernel='linear')                                   #Train an SVM model with SVR
-    grid_search = GridSearchCV(modell, param_grid, cv=5, scoring='neg_mean_squared_error') #Perform grid search
-    grid_search.fit(iris_x_training_last, iris_t_training_last)
-    best_alpha = grid_search.best_params_['C']                      #Get the best parameter
-    print("Best alpha from SVM:", best_alpha)
-
-    modell.fit(iris_x_training_last, iris_t_training_last)
-    predictions = modell.predict(iris_x_testing_first)              #Make predictions on the test set
-    mse = mean_squared_error(iris_t_testing_first, predictions)     #Calculate Mean Squared Error
-    print("Mean Squared Error using SVM:", mse)
-
-    ####ACCURACY####
-    model = LogisticRegression(max_iter=10000, random_state=42)     #Initialize and train the logistic regression model
-    model.fit(iris_x_training_last, iris_t_training_last)
-    predictions = model.predict(iris_x_testing_first)               #Predict on the testing set
-    accuracy = accuracy_score(iris_t_testing_first, predictions)    #Evaluate accuracy
-    print(f"Accuracy on testing set two is: {accuracy}")
-
-
-
-
-#TODO: Error Rate
-def confusion_matrix():
-    """Finding the confusion matrix and the error rate for the whole set."""
-    corr = iris.corr()
-    fig, ax = plt.subplots(figsize=(5,4))
-    sns.heatmap(corr, annot=True, ax=ax, cmap=sns.cubehelix_palette(as_cmap=True))
-    plt.title("Confusion Matrix Iris Dataset")
-    plt.show()
-    
-def confusion_matrix_training():
-    """Find the confusion matrix and the error rate for the training set."""
-    corr = iris_x_training_first.corr()
-    fig, ax = plt.subplots(figsize=(5,4))
-    sns.heatmap(corr, annot=True, ax=ax, cmap=sns.cubehelix_palette(as_cmap=True))
-    plt.title("Confusion Matrix Training Dataset")
-    plt.show()
-
-def confusion_matrix_test():
-    """Find the confusion matrix and the error rate for the test set."""
-    corr = iris_x_testing_last.corr()
-    fig, ax = plt.subplots(figsize=(5,4))
-    sns.heatmap(corr, annot=True, ax=ax, cmap=sns.cubehelix_palette(as_cmap=True))
-    plt.title("Confusion Matrix Testing Dataset")
-    plt.show()
-
-def plot_error_rates(error_rates_train, error_rates_test):
-    iteration_numbers = range(len(error_rates_train))
-
-    plt.plot(iteration_numbers, error_rates_train, label='Train')
-    plt.plot(iteration_numbers, error_rates_test, label='Test')
-
-    plt.xlabel("Iteration number")
-    plt.ylabel("Error rate")
-    plt.legend()
-
-    plt.show()
-
-#########################
-##     SECOND PART     ##
-#########################
-# The second part has focus on features and linear separability. In this part the first 30 samples are used for training and the last 20 samples for test.
-"""Produce histograms for each feature and class. Take away the feature which shows most
-overlap between the classes. Train and test a classifier with the remaining three features.
-(b) Repeat the experiment above with respectively two and one features.
-(c) Compare the confusion matrixes and the error rates for the four experiments. Comment
-on the property of the features with respect to linear separability both as a whole and
-for the three separate classes."""
-
-
-#########################
-##       RUN CODE      ##
-#########################
+    return iris_x_testing_last, iris_t_testing_last, iris_x_testing_first, iris_t_testing_first
 
 read_data()
 iris_training()
 iris_test()
-#confusion_matrix()
-#confusion_matrix_training()
-#confusion_matrix_test()
-mse_1()
-mse_2()
+
+############################################################
+##                                                        ##
+##     EQUATIONS & FUNCTIONS FOR TRAINING AND TESTING     ##
+##                                                        ##
+############################################################
+
+def mse(g_k, t_k):
+    """Eq:19 from compendium"""
+    return 0.5*np.matmul(np.matrix.transpose(g_k-t_k), (g_k-t_k))
+
+def sigmoid(z):
+    """Eq:20 from compendium"""
+    g_ik = np.array(1 / (1 + np.exp(-z)))
+    return g_ik
+
+def grad_mse(g_k, t_k, x_k):
+    """Eq:22 from compendium"""
+    x_k = np.array(x_k, dtype=float)
+    return np.matmul(np.multiply(np.multiply(g_k-t_k, g_k), g_k*(1-g_k)), np.transpose(x_k))
+
+def grad_mse_test(g, t, x):
+    delta_mse = g - t
+    delta_g = np.multiply(g, 1 - g)
+    delta_z = np.transpose(x)
+    return np.dot(delta_z, np.multiply(delta_mse, delta_g))
+
+def predicted_labels(g):
+    predictions = [np.argmax(sample) for sample in g]
+    return predictions
+
+def error_rate(predicted_labels, actual_labels):
+    number_error = 0
+
+    for i in range(len(actual_labels)):
+        if not np.array_equal(actual_labels[i], predicted_labels[i]):
+            number_error += 1
+    error = number_error/len(actual_labels)
+
+    return error
+
+def confusion_matrix_iris(actual_labels, predictions):
+    conf_mat = confusion_matrix(actual_labels, predictions)
+    return conf_mat
+
+def plot_confusion_matrix_iris(actual_labels, predictions, title):
+    disp = ConfusionMatrixDisplay.from_predictions(actual_labels, predictions, display_labels=classes, cmap=sns.cubehelix_palette(as_cmap=True))
+    disp.ax_.set_title(title)
+    plt.show()
+
+def iris_histogram(x, n):    
+    for j in range (Classes):
+        rows = x[n*j: n + n*j, :]
+        for i in range(2):
+            plt.hist(rows[:,i], color='indigo', edgecolor='black', bins = 17, alpha = 0.6)
+            plt.xlabel('[cm]')
+            plt.ylabel('Frequency')
+            plt.title('Histogram for ' + features[i] + ' for class ' + classes[j])
+            plt.show()
+
+def training(W, X, T, n, a):
+    for i in range(n):
+        z = np.dot(X, np.transpose(W))
+        g = sigmoid(z)
+        mse_test = grad_mse_test(g, T, X)
+        W = W - a*np.transpose(mse_test)
+    return W, g
+
+def testing(W, x):
+    z = np.dot(x, np.transpose(W))
+    g = sigmoid(z)
+    return g
+
+
+#########################
+##                     ##
+##         MAIN        ##
+##                     ##
+#########################
+def main():
+    global iris_t_training_first, iris_t_testing_last
+    w_training, g_training = training(W, iris_x_training_first, iris_t_training_first, N, alpha)
+    g_testing = testing(w_training, iris_x_testing_last)
+    predicted_labels_training = predicted_labels(g_training)
+    predicted_labels_testing = predicted_labels(g_testing)
+
+
+    iris_t_training_first = np.delete(iris_t_training_first, [1, 2], 1)
+    iris_t_training_first = iris_t_training_first.flatten().astype(int)
+    iris_t_testing_last = np.delete(iris_t_testing_last, [1, 2], 1)
+    iris_t_testing_last = iris_t_testing_last.flatten().astype(int)
+
+    #PLOTTING CONFUSION MATRIX AND HISTOGRAM
+    confusion_matrix_iris(iris_t_training_first, predicted_labels_training)
+    plot_confusion_matrix_iris(iris_t_training_first, predicted_labels_training, 'Confusion matrix for training set')
+    confusion_matrix_iris(iris_t_testing_last, predicted_labels_testing)
+    plot_confusion_matrix_iris(iris_t_testing_last, predicted_labels_testing, 'Confusion matrix for testing set')
+    iris_histogram(iris_x_training_first,30)
+    iris_histogram(iris_t_testing_last, 20)
+
+    #PRINT ERROR RATE FOR TRAINING- AND TESTING
+    error_rate_training = error_rate(predicted_labels_training, iris_t_training_first)
+    error_rate_test = error_rate(predicted_labels_testing, iris_t_testing_last)
+    print('Error rate for training set is' ,error_rate_training)
+    print('Error rate for test set is', error_rate_test)
+
+
+##############################
+##                          ##
+##     RUNNING THE CODE     ##
+##                          ##
+##############################
+main()
