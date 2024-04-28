@@ -1,13 +1,9 @@
-from sklearn import metrics
-from sklearn.metrics import mean_squared_error, accuracy_score, confusion_matrix, ConfusionMatrixDisplay
-from sklearn.linear_model import Perceptron, LinearRegression, Ridge, LogisticRegression
-from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn.preprocessing import LabelEncoder
-from sklearn.svm import SVR
-import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 ###############################################################
 ##                                                           ##
