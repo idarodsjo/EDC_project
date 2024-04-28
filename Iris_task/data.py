@@ -9,12 +9,9 @@ import pandas as pd
 
 
 def read_data():
-    """Read data and seperate into dataset without species, x, and with only species, t"""
-    global iris, x, t
+    global iris
     iris = pd.read_csv('iris.csv')
     iris = iris.drop(columns=['Id'])
-    x = iris.drop('Species', axis=1)
-    t = iris.Species
 
 def iris_hist_plot():
     plt.figure(figsize=(10, 6))
