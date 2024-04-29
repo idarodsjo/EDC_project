@@ -5,6 +5,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+
 ###############################################################
 ##                                                           ##
 ##     READING DATA & PREPARING FOR TRAINING AND TESTING     ##
@@ -12,19 +13,20 @@ import matplotlib.pyplot as plt
 ###############################################################
 
 classes = ['setosa', 'versicolor', 'virginica']
-features = ['sepal length', 'sepal width', 'petal length', 'petal width']
+features = ['Sepal length', 'Sepal width', 'Petal length', 'Petal width']
 
 Classes = len(classes)              #3
 Feature = len(features)             #4
 alpha = 0.01                        #Step factor
 N = 1000                            #Number of iterations
-W = np.zeros([Classes, 2])    #Matrix of classes and features #TODO:
+W = np.zeros([Classes, Feature])    #Matrix of classes and features
 
 def read_data():
     """Read data and seperate into dataset without species, x, and with only species, t"""
     global iris, x, t
     iris = pd.read_csv('iris.csv')
-    iris = iris.drop(columns=['Id', 'SepalWidthCm', 'PetalWidthCm'])
+    iris = iris.drop(columns=['Id'])
+    #iris = iris.drop(columns=['Id', 'SepalWidthCm', 'PetalWidthCm'])
     #iris_describe = iris.describe()
     #iris_info = iris.info()
     #iris_species = iris.iloc[:,-1:].value_counts()
@@ -38,7 +40,7 @@ def iris_training():
     """Training set with 30 first samples for both x and t.
        Training set with 30 last samples for both x and t."""
     #30 first samples for training
-    global iris_x_training_first, iris_t_training_first, iris_x_training_last, iris_t_training_last
+    global iris_x_training_first, iris_t_training_first, iris_x_training_last, iris_t_training_last, iris_t_training
     zeros_columns = np.zeros([90,2])
     iris_x_setosa_training_first, iris_t_setosa_training_first = x[:30], t[:30]
     iris_x_versicolor_training_first, iris_t_versicolor_training_first = x[50:80], t[50:80]
@@ -46,6 +48,11 @@ def iris_training():
     iris_x_training_first = np.concatenate([iris_x_setosa_training_first, iris_x_versicolor_training_first, iris_x_virginica_training_first])
     iris_t_training_first = np.concatenate([iris_t_setosa_training_first, iris_t_versicolor_training_first, iris_t_virginica_training_first])
     iris_t_training_first = np.concatenate([iris_t_training_first[:, np.newaxis], zeros_columns], axis=1)
+    iris_t_training = np.zeros((90,3))
+
+    iris_t_training[:30, 0] = 1
+    iris_t_training[30:60, 1] = 1
+    iris_t_training[60:, 2] = 1
 
     #30 last samples for training
     iris_x_setosa_training_last, iris_t_setosa_training_last = x[20:50], t[20:50]
@@ -55,7 +62,7 @@ def iris_training():
     iris_t_training_last = np.concatenate([iris_t_setosa_training_last, iris_t_versicolor_training_last, iris_t_virginica_training_last])
     iris_t_training_last = np.concatenate([iris_t_training_last[:, np.newaxis], zeros_columns], axis=1)
 
-    return iris_x_training_first, iris_t_training_first, iris_x_training_last, iris_t_training_last
+    return iris_x_training_first, iris_x_training_last, iris_t_training, iris_t_training_last, iris_t_training_first
 
 def iris_test():
     """Test set with 20 last  samples for both x and t.
@@ -116,31 +123,25 @@ def predicted_labels(g):
 
 def error_rate(predicted_labels, actual_labels):
     number_error = 0
-
     for i in range(len(actual_labels)):
         if not np.array_equal(actual_labels[i], predicted_labels[i]):
             number_error += 1
     error = number_error/len(actual_labels)
-
     return error
 
-def confusion_matrix_iris(actual_labels, predictions):
-    conf_mat = confusion_matrix(actual_labels, predictions)
-    return conf_mat
-
-def plot_confusion_matrix_iris(actual_labels, predictions, title):
+def iris_confusion_matrix(actual_labels, predictions, title):
     disp = ConfusionMatrixDisplay.from_predictions(actual_labels, predictions, display_labels=classes, cmap=sns.cubehelix_palette(as_cmap=True))
     disp.ax_.set_title(title)
     plt.show()
 
-def iris_histogram(x, n):    
+def iris_histogram(x, n, title):    
     for j in range (Classes):
         rows = x[n*j: n + n*j, :]
-        for i in range(2):
+        for i in range(Feature):
             plt.hist(rows[:,i], color='indigo', edgecolor='black', bins = 17, alpha = 0.6)
             plt.xlabel('[cm]')
             plt.ylabel('Frequency')
-            plt.title('Histogram for ' + features[i] + ' for class ' + classes[j])
+            plt.title(features[i] + ' for ' + classes[j] + ', ' + title)
             plt.show()
 
 def training(W, X, T, n, a):
@@ -163,29 +164,30 @@ def testing(W, x):
 ##                     ##
 #########################
 def main():
-    global iris_t_training_first, iris_t_testing_last
-    w_training, g_training = training(W, iris_x_training_first, iris_t_training_first, N, alpha)
-    g_testing = testing(w_training, iris_x_testing_last)
+    global iris_t_training_first, iris_t_training_last, iris_t_testing_last, iris_t_testing_first, iris_t_training
+    w_training, g_training = training(W, iris_x_training_last, iris_t_training, N, alpha)
+    g_testing = testing(w_training, iris_x_testing_first)
     predicted_labels_training = predicted_labels(g_training)
     predicted_labels_testing = predicted_labels(g_testing)
 
-
     iris_t_training_first = np.delete(iris_t_training_first, [1, 2], 1)
-    iris_t_training_first = iris_t_training_first.flatten().astype(int)
+    iris_t_training_first = iris_t_training_first.flatten().astype(int).tolist()
+    iris_t_training_last = np.delete(iris_t_training_last, [1, 2], 1)
+    iris_t_training_last = iris_t_training_last.flatten().astype(int).tolist()
     iris_t_testing_last = np.delete(iris_t_testing_last, [1, 2], 1)
-    iris_t_testing_last = iris_t_testing_last.flatten().astype(int)
+    iris_t_testing_last = iris_t_testing_last.flatten().astype(int).tolist()
+    iris_t_testing_first = np.delete(iris_t_testing_first, [1, 2], 1)
+    iris_t_testing_first = iris_t_testing_first.flatten().astype(int).tolist()
 
     #PLOTTING CONFUSION MATRIX AND HISTOGRAM
-    confusion_matrix_iris(iris_t_training_first, predicted_labels_training)
-    plot_confusion_matrix_iris(iris_t_training_first, predicted_labels_training, 'Confusion matrix for training set')
-    confusion_matrix_iris(iris_t_testing_last, predicted_labels_testing)
-    plot_confusion_matrix_iris(iris_t_testing_last, predicted_labels_testing, 'Confusion matrix for testing set')
-    iris_histogram(iris_x_training_first,30)
-    iris_histogram(iris_t_testing_last, 20)
+    iris_confusion_matrix(iris_t_training_last, predicted_labels_training, 'Confusion matrix for training set')
+    iris_confusion_matrix(iris_t_testing_first, predicted_labels_testing, 'Confusion matrix for testing set')
+    #iris_histogram(iris_x_training_first, 30, 'first training set')
+    #iris_histogram(iris_x_testing_first, 20, 'second testing set')
 
     #PRINT ERROR RATE FOR TRAINING- AND TESTING
-    error_rate_training = error_rate(predicted_labels_training, iris_t_training_first)
-    error_rate_test = error_rate(predicted_labels_testing, iris_t_testing_last)
+    error_rate_training = error_rate(predicted_labels_training, iris_t_training_last)
+    error_rate_test = error_rate(predicted_labels_testing, iris_t_testing_first)
     print('Error rate for training set is' ,error_rate_training)
     print('Error rate for test set is', error_rate_test)
 
