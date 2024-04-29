@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt # for data visualization purposes
 import seaborn as sns # for data visualization
 import time
 from sklearn.cluster import KMeans
-from scipy.spatial import distance
+import scipy
 import datetime
 
 (training_data, training_labels), (test_data, test_labels) = mnist.load_data()
@@ -48,12 +48,13 @@ def count_samples(classList):
 
     return sample_count
 
+class_list = split_data(training_data, training_labels)
 
-""" plt.subplot(2,1,1)
-plt.imshow(class_list[0])
+plt.subplot(2,1,1)
+plt.imshow(training_data[0])
 plt.subplot(2,1,2)
-plt.imshow(class_list[57000])
-plt.show() """
+plt.imshow(training_data[57000])
+plt.show()
 
 #---------------------------------------------------------
 #   **************************************************
@@ -63,6 +64,8 @@ plt.show() """
 #   **************************************************
 #---------------------------------------------------------
 
+# trains the data
+
 def cluster_data(num_clusters, training_data, training_labels):
     start = time.time()
 
@@ -71,13 +74,13 @@ def cluster_data(num_clusters, training_data, training_labels):
 
     clusterMatrix = np.empty((numClasses, num_clusters, 784))
 
-    before = 0   # ?
-    after = 0   # ?
+   # before = 0   # ?
+    #after = 0   # ?
 
     for class_i, i in enumerate(classes):
-        after += i
+        #after += i
         cluster = KMeans(n_clusters=num_clusters, random_state=0).fit(classListFlattened).cluster_centers_
-        before = after
+        #before = after
         clusterMatrix[class_i] = cluster
         print(class_i)
 
@@ -87,6 +90,17 @@ def cluster_data(num_clusters, training_data, training_labels):
 
 clusterMatrix = cluster_data(64, training_data, training_labels)
 
+
+#---------------------------------------------------------
+#   **************************************************
+#   |                                                |
+#   |               EUCLIDIAN DISTANCE               |
+#   |                                                |
+#   **************************************************
+#---------------------------------------------------------
+
+def get_euclidian_distance(training_chunk, test_chunk):
+    return scipy.spatial.distance_matrix(training_chunk, test_chunk)
 
 
 
@@ -106,28 +120,29 @@ class NN():
         self.training_labels = training_labels
 
 # First NN without clustering
-def NN_classifier(self, test_data):
-    classifications = []
-    successful_classifications = []
-    failed_classifications = []
+def KNN_classifier(test_data_chunk, train_data_chunk, train_labels_chunk, K):
+    distance = get_euclidian_distance(train_data_chunk, test_data_chunk)
 
-    for i in range(len(test_data)):
-        eucledian_distance = []
+    nearest_indices = np.argpartition(distance, K, axis=0)[:K]
+    nearest_labels = train_labels_chunk[nearest_indices]
 
-        for j in range(len(self.training_data)):
-            eucledian_distance.append(distance.euclidean(test_data[i], self.training_data[j]))
-        
-        NN_index = np.argmin(eucledian_distance)
+    return scipy.stats.mode(nearest_labels, keepdims=False).mode
 
-        if test_labels[i] != training_labels[NN_index]:
-            failed_classifications.append([test_data[i], training_data[NN_index]])
-        else:
-            successful_classifications.append([test_data[i], training_data[NN_index]])
+#---------------------------------------------------------
+#   **************************************************
+#   |                                                |
+#   |                   testING                      |
+#   |                                                |
+#   **************************************************
+#---------------------------------------------------------
 
-        classifications.append(self.training_labels[NN_index])
+def test_KNN_classifier(self, num_chunks = 60, K = 1):
+    print('testing KNN classifier for K = ' + str(K))
 
-    return classifications, successful_classifications, failed_classifications
+    start_time = time.time()
 
+    self.num_chunks = num_chunks
+    self.K = K
 
 
 #---------------------------------------------------------
@@ -153,3 +168,31 @@ def get_normalised_confusion_matrix(classifications):
         confusion_matrix[test_labels[i], x] += 1
 
     return confusion_matrix / np.amax(confusion_matrix)
+
+def get_error_rate(confusion_matrix):
+    error = np.trace(confusion_matrix)
+    error_rate = 1 - (error / np.sum(confusion_matrix))
+    
+    return round(error_rate, 4)
+
+
+#---------------------------------------------------------
+#   **************************************************
+#   |                                                |
+#   |                   PLOTTING                     |
+#   |                                                |
+#   **************************************************
+#---------------------------------------------------------
+
+def plot_digit_image(data, index):
+    plt.imshow(data[index], cmpap=plt.get_cmap('gray'))
+
+
+def plot_confusion_matrix(title, confusion_matrix, error_rate, visualise):
+    if visualise:
+        plt.figure(figsize = (10.5, 8))
+        plt.title(f'Confusion matrix for {title} \n Error rate: {str(error_rate*100)}')
+        sns.heatmaå(confusion_matrix, annot=True, fmt='.0f')
+        plt.xlabel('Classified label')
+        plt.ylabel('True label')
+        plt.show()
