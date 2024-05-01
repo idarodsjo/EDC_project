@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 ###################################
@@ -27,7 +28,7 @@ def iris_hist_plot():
     plt.hist(virginica_sepal_width, color='indigo', alpha=0.5, label='Virginica')
     plt.title('Sepal Width')
     plt.xlabel('Sepal Width [cm]')
-    plt.ylabel('Number')
+    plt.ylabel('Frequency')
     plt.legend()
 
     #SEPAL WIDTH
@@ -41,7 +42,7 @@ def iris_hist_plot():
     plt.hist(virginica_sepal_width, color='indigo', alpha=0.5, label='Virginica')
     plt.title('Sepal Length')
     plt.xlabel('Sepal Length [cm]')
-    plt.ylabel('Number')
+    plt.ylabel('Frequency')
     plt.legend()
 
     #PETAL LENGTH
@@ -55,7 +56,7 @@ def iris_hist_plot():
     plt.hist(virginica_sepal_width, color='indigo', alpha=0.5, label='Virginica')
     plt.title('Petal Length')
     plt.xlabel('Petal Length [cm]')
-    plt.ylabel('Number')
+    plt.ylabel('Frequency')
     plt.legend()
 
     #PETAL WIDTH
@@ -69,39 +70,46 @@ def iris_hist_plot():
     plt.hist(virginica_sepal_width, color='indigo', alpha=0.5, label='Virginica')
     plt.title('Petal Width')
     plt.xlabel('Petal width [cm]')
-    plt.ylabel('Number')
+    plt.ylabel('Frequency')
     plt.legend()
 
     plt.tight_layout()
     plt.show()
 
-
 def iris_scatter():
     colors = ['plum', 'darkgreen', 'indigo']
     species = ['Iris-virginica', 'Iris-versicolor', 'Iris-setosa']
 
-    fig, axs = plt.subplots(2, 2, figsize=(12, 10), sharex=True, sharey=True)
+    fig, axs = plt.subplots(1, 2, figsize=(10, 6), sharex=True, sharey=True)
 
     for i in range(3):
         x = iris[iris['Species'] == species[i]]
-        axs[0, 0].scatter(x['SepalLengthCm'], x['SepalWidthCm'], c=colors[i], label=species[i])
-        axs[0, 1].scatter(x['PetalLengthCm'], x['PetalWidthCm'], c=colors[i], label=species[i])
-        axs[1, 0].scatter(x['SepalLengthCm'], x['PetalLengthCm'], c=colors[i], label=species[i])
-        axs[1, 1].scatter(x['SepalWidthCm'], x['PetalWidthCm'], c=colors[i], label=species[i])
+        axs[0].scatter(x['SepalLengthCm'], x['SepalWidthCm'], c=colors[i], label=species[i])
+        axs[1].scatter(x['PetalLengthCm'], x['PetalWidthCm'], c=colors[i], label=species[i])
 
-    axs[0, 0].set_title('Sepal Length vs Sepal Width')
-    axs[0, 1].set_title('Petal Length vs Petal Width')
-    axs[1, 0].set_title('Sepal Length vs Petal Length')
-    axs[1, 1].set_title('Sepal Width vs Petal Width')
+    axs[0].set_title('Sepal Length vs Sepal Width')
+    axs[1].set_title('Petal Length vs Petal Width')
 
     for ax in axs.flat:
-        ax.set(xlabel='Length (cm)', ylabel='Width (cm)')
+        ax.set(xlabel='Length [cm]', ylabel='Width [cm]')
         ax.legend()
         ax.grid()
 
     plt.tight_layout()
     plt.show()
 
+def plot_sigmoid():
+    x = np.linspace(-10, 10, 1000)
+    g_k = 1 / (1 + np.exp(-x))
+    plt.figure(figsize=(8, 6))
+    plt.plot(x, g_k, label='Sigmoid Function', color='darkgreen')
+    plt.title('Sigmoid Function')
+    plt.xlabel('Measurement value')
+    plt.ylabel('Class likelihood score')
+    plt.legend()
+    plt.show()  
+
 read_data()
 iris_scatter()
 iris_hist_plot()
+plot_sigmoid()
