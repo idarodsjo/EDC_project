@@ -59,26 +59,3 @@ class KNNClassifier:
     # Finds diffierence between matrices, returns second order norm
     def euclideanDistance(x, y):
         return np.linalg.norm(x - y, 2)
-
-
-""" 
-    # Predicts class of single data sample, decides based on votes for K > 1
-    def predictSample(self, testX):
-        nearest = np.ones(self.K)*np.inf
-        nearestIndex = -np.ones(self.K).astype(int)
-
-        for i in range(self.N):
-            distance = self.euclideanDistance(self.testX[i], testX)
-
-            # Checks distance to find the shortest
-            if distance < np.max(nearest):
-                ix = np.argmax(nearest)
-                nearest[ix] = distance
-                nearestIndex[ix] = i
-
-        labels = self.labels[nearestIndex]
-        uniqueLabels, counts = np.unique(labels, return_counts=True)
-
-        return uniqueLabels[np.argmax(counts)]
-
- """

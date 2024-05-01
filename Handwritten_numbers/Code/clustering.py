@@ -1,29 +1,6 @@
 import numpy as np
 from sklearn.cluster import KMeans
 
-""" 
-def make_clusters(trainX, trainY):
-    M = 64 #num clusters, per class
-    flattenedPixture = 28 * 28
-    numClasses = 10
-
-    clusters = np.zeros((numClasses, M, flattenedPixture))
-    for i in range(numClasses):
-        kmeansClustering = KMeans(n_clusters = M, n_init='auto')
-        clusters[i] = kmeansClustering.fit(trainX[trainY == i]).cluster_centers_
-
-    clusters = clusters.reshape(numClasses * M, flattenedPixture)
-    clusterLabels = np.tile(np.arange(10), M).reshape(M, numClasses).T.flatten()
-
-    indices = np.arange(10*M)
-    #np.random.shuffle(indices)
-
-    clusters = clusters[indices]
-    clusterLabels = clusterLabels[indices]
-
-    return clusters, clusterLabels
-
- """
 def make_clusters(trainX, trainY):
     numClustersInClass = 64
     flattenedPixture = 28 * 28
