@@ -21,16 +21,19 @@ alpha = 0.01                        #Step factor
 N = 1000                            #Number of iterations
 W = np.zeros([Classes, Feature])    #Matrix of classes and features
 
+
 def read_data():
     """Read data and seperate into dataset without species, x, and with only species, t"""
     global iris, x, t
     iris = pd.read_csv('iris.csv')
-    iris = iris.drop(columns=['Id'])
-    #iris = iris.drop(columns=['Id', 'SepalWidthCm', 'PetalWidthCm'])
+    #iris_head = iris.head()
     #iris_describe = iris.describe()
     #iris_info = iris.info()
-    #iris_species = iris.iloc[:,-1:].value_counts()
     #iris_sum = iris.isnull().sum()
+    iris = iris.drop(columns=['Id'])
+    #iris = iris.drop(columns=['Id', 'SepalWidthCm'])
+    #iris = iris.drop(columns=['Id', 'SepalWidthCm', 'PetalWidthCm'])
+    #iris = iris.drop(columns=['Id', 'SepalWidthCm', 'PetalWidthCm', 'PetalLengthCm'])
     le = LabelEncoder()     #Label Encoding for converting the labels into numeric form
     iris['Species'] = le.fit_transform(iris['Species'])
     x = iris.drop('Species', axis=1)
@@ -106,20 +109,15 @@ def sigmoid(z):
     g_ik = np.array(1 / (1 + np.exp(-z)))
     return g_ik
 
-def grad_mse(g_k, t_k, x_k):
-    """Eq:22 from compendium"""
-    x_k = np.array(x_k, dtype=float)
-    return np.matmul(np.multiply(np.multiply(g_k-t_k, g_k), g_k*(1-g_k)), np.transpose(x_k))
-
 def grad_mse_test(g, t, x):
+    """Eq:21 and 22 from compendium"""
     delta_mse = g - t
     delta_g = np.multiply(g, 1 - g)
     delta_z = np.transpose(x)
     return np.dot(delta_z, np.multiply(delta_mse, delta_g))
 
 def predicted_labels(g):
-    predictions = [np.argmax(sample) for sample in g]
-    return predictions
+    return list(map(np.argmax, g))
 
 def error_rate(predicted_labels, actual_labels):
     number_error = 0
@@ -144,6 +142,25 @@ def iris_histogram(x, n, title):
             plt.title(features[i] + ' for ' + classes[j] + ', ' + title)
             plt.show()
 
+def iris_histogram_feature(x, n, title):
+    fig, axs = plt.subplots(2, 2, figsize=(12, 12))
+    colors = ['plum', 'darkgreen', 'indigo']
+
+    for i in range(Feature):
+        row = i // 2            #Determine the row index of the subplot
+        col = i % 2             #Determine the column index of the subplot
+        
+        for j in range(Classes):
+            rows = x[n*j: n + n*j, :]
+            axs[row, col].hist(rows[:, i], color=colors[j % len(colors)], bins=17, alpha=0.5, label=classes[j])
+        axs[row, col].set_xlabel('[cm]')
+        axs[row, col].set_ylabel('Frequency')
+        axs[row, col].set_title(features[i] + ', ' + title)
+        axs[row, col].legend()
+
+    plt.tight_layout()
+    plt.show()
+
 def training(W, X, T, n, a):
     for i in range(n):
         z = np.dot(X, np.transpose(W))
@@ -157,6 +174,22 @@ def testing(W, x):
     g = sigmoid(z)
     return g
 
+def find_best_alpha(alphas):
+    best_alpha = None
+    best_error_rate = float('inf')
+    
+    for alpha in alphas:
+        w_training, g_training = training(W, iris_x_training_first, iris_t_training, N, alpha)
+        
+        g_validation = testing(w_training, iris_x_testing_first)
+        predicted_labels_validation = predicted_labels(g_validation)
+        error_rate_validation = error_rate(predicted_labels_validation, iris_t_testing_first)
+        
+        if error_rate_validation < best_error_rate:
+            best_error_rate = error_rate_validation
+            best_alpha = alpha
+    
+    return best_alpha, best_error_rate
 
 #########################
 ##                     ##
@@ -165,8 +198,8 @@ def testing(W, x):
 #########################
 def main():
     global iris_t_training_first, iris_t_training_last, iris_t_testing_last, iris_t_testing_first, iris_t_training
-    w_training, g_training = training(W, iris_x_training_last, iris_t_training, N, alpha)
-    g_testing = testing(w_training, iris_x_testing_first)
+    w_training, g_training = training(W, iris_x_training_first, iris_t_training, N, alpha)
+    g_testing = testing(w_training, iris_x_testing_last)
     predicted_labels_training = predicted_labels(g_training)
     predicted_labels_testing = predicted_labels(g_testing)
 
@@ -179,17 +212,37 @@ def main():
     iris_t_testing_first = np.delete(iris_t_testing_first, [1, 2], 1)
     iris_t_testing_first = iris_t_testing_first.flatten().astype(int).tolist()
 
+
     #PLOTTING CONFUSION MATRIX AND HISTOGRAM
-    iris_confusion_matrix(iris_t_training_last, predicted_labels_training, 'Confusion matrix for training set')
-    iris_confusion_matrix(iris_t_testing_first, predicted_labels_testing, 'Confusion matrix for testing set')
+    #FIRST SET
+    iris_confusion_matrix(iris_t_training_first, predicted_labels_training, 'Confusion matrix for training set')
+    iris_confusion_matrix(iris_t_testing_last, predicted_labels_testing, 'Confusion matrix for testing set')
+    #SECOND SET
+    #iris_confusion_matrix(iris_t_training_last, predicted_labels_training, 'Confusion matrix for training set')
+    #iris_confusion_matrix(iris_t_testing_first, predicted_labels_testing, 'Confusion matrix for testing set')
+    #HISTOGRAM
     #iris_histogram(iris_x_training_first, 30, 'first training set')
-    #iris_histogram(iris_x_testing_first, 20, 'second testing set')
+    #iris_histogram(iris_x_testing_last, 20, 'first testing set')
+    iris_histogram_feature(iris_x_training_first, 30, 'first training set')
+    iris_histogram_feature(iris_x_testing_last, 20, 'first testing set')
 
     #PRINT ERROR RATE FOR TRAINING- AND TESTING
+    #FIRST SET
     error_rate_training = error_rate(predicted_labels_training, iris_t_training_last)
     error_rate_test = error_rate(predicted_labels_testing, iris_t_testing_first)
     print('Error rate for training set is' ,error_rate_training)
     print('Error rate for test set is', error_rate_test)
+    #SECOND SET
+    #error_rate_training = error_rate(predicted_labels_training, iris_t_training_first)
+    #error_rate_test = error_rate(predicted_labels_testing, iris_t_testing_last)
+    #print('Error rate for training set is' ,error_rate_training)
+    #print('Error rate for test set is', error_rate_test)
+
+    #FINDING THE BEST ALPHA
+    #alphas = [0.001, 0.01, 0.1, 0.5, 1.0]
+    #best_alpha, best_error_rate = find_best_alpha(alphas)
+    #print('Best alpha:', best_alpha)
+    #print('Lowest validation error rate:', best_error_rate)
 
 
 ##############################
