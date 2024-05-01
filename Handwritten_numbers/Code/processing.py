@@ -20,13 +20,8 @@ subsetTestY = testY[:chunkSize]
 
 # Normalising data
 def normalise(data):
-    """
-    min-max normalize the elements of data.
-
-    data: tensor with values to be normalized.
-    """
-    value_range = np.max(data) - np.min(data)
-    normalized_data = (data - np.min(data))/value_range
+    value_range = np.max(data) - np.min(data)   # should give 255-0 = 255
+    normalized_data = (data - np.min(data))/value_range # gives values between 0 and 1 for all pixels in 28x28 pixture
      
     return normalized_data
 

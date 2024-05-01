@@ -1,61 +1,84 @@
 import numpy as np
 
 # Making class that implements KNN algo
-class NNClassifier:
+class KNNClassifier:
+    # Takes the value of K, decides if classifier is NN (K=1) or KNN (K>1)
     def __init__(self, K = 1):
-
-        if K%2 != 1:
-            raise ValueError("K is not odd, votes may tie!")
-        
         self.K = K
-
+    
+    # Saves training testX and labels 
     def fit(self, trainX, trainY):
-        """
-        Saves all images, along with their class.
-        """
-        self.data = trainX
+        self.testX = trainX
         self.labels = trainY
 
         self.N = len(self.labels)
 
-    def predict(self, data):
-        """Returns the predicted class for each sample in data
-        """
-        N = len(data)
+    def predictSample(self, testX):
+        # Initialize arrays to store nearest distances and indices
+        nearest_distances = np.full(self.K, np.inf)
+        nearest_indices = np.full(self.K, -1, dtype=int)
+
+        # Iterate through each sample in the training data
+        for i, train_data in enumerate(self.testX):
+            # Calculate Euclidean distance between current training data sample and testX
+            distance = np.linalg.norm(train_data - testX)
+
+            # Update nearest neighbors if current distance is smaller than the maximum in nearest_distances
+            if distance < np.max(nearest_distances):
+                max_index = np.argmax(nearest_distances)
+                nearest_distances[max_index] = distance
+                nearest_indices[max_index] = i
+
+        # Extract labels of nearest neighbors
+        nearest_labels = self.labels[nearest_indices]
+
+        # Count occurrences of each unique label among nearest neighbors
+        unique_labels, label_counts = np.unique(nearest_labels, return_counts=True)
+
+        # Return the label that occurs most frequently among the nearest neighbors
+        return unique_labels[np.argmax(label_counts)]
+
+    # Predicts class for each data sample in testX
+    def predict(self, testX):
+        N = len(testX)
         preds = np.zeros(N)
 
         for i in range(N):
-            preds[i] = self.predictSample(data[i])
+            preds[i] = self.predictSample(testX[i])
 
         return preds.astype(int)
 
-    def predictSample(self, data):
-        """Predicts the class of a single sample by comparing its distance to all samples in the training set,
-        and deciding based an a majority vote between the K Nearest Neighbors.
-        """
-        best_val = np.ones(self.K)*np.inf
-        best_idx = -np.ones(self.K).astype(int)
-
-        for i in range(self.N):
-            d = self.euclideanDistance(self.data[i], data)
-            if d < np.max(best_val):
-                ix = np.argmax(best_val) #replace highest value
-                best_val[ix] = d
-                best_idx[ix] = i
-
-        labs = self.labels[best_idx]
-        uniqueLabels, counts = np.unique(labs, return_counts=True)
-
-        return uniqueLabels[np.argmax(counts)]
     
-
+    # Failed predictions divided by all predictions
     def errorRate(self, testX, testY):
-        """
-        Returns proportion of correct predictions on the test data and labels given.        
-        """
         N = len(testY)
         preds = self.predict(testX)
-        return np.count_nonzero(testY - preds)/N
+        numFailed = np.count_nonzero(testY - preds)
+        return numFailed/N
 
-    def euclideanDistance(self, a, b):
-        return np.linalg.norm(a - b, 2)
+    # Finds diffierence between matrices, returns second order norm
+    def euclideanDistance(x, y):
+        return np.linalg.norm(x - y, 2)
+
+
+""" 
+    # Predicts class of single data sample, decides based on votes for K > 1
+    def predictSample(self, testX):
+        nearest = np.ones(self.K)*np.inf
+        nearestIndex = -np.ones(self.K).astype(int)
+
+        for i in range(self.N):
+            distance = self.euclideanDistance(self.testX[i], testX)
+
+            # Checks distance to find the shortest
+            if distance < np.max(nearest):
+                ix = np.argmax(nearest)
+                nearest[ix] = distance
+                nearestIndex[ix] = i
+
+        labels = self.labels[nearestIndex]
+        uniqueLabels, counts = np.unique(labels, return_counts=True)
+
+        return uniqueLabels[np.argmax(counts)]
+
+ """
